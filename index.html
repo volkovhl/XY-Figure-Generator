@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>XY Figure Generator | генератор фигур для осциллографа и лазера</title>
+    <meta name="description" content="XY Figure Generator — инструмент для создания стерео WAV сигналов (X/Y) для осциллографов и лазерных проекторов. Фигуры Лиссажу, 3D вращение, текст в вектор. Бесконечный цикл воспроизведения.">
+    <meta name="keywords" content="XY Figure Generator, генератор фигур, осциллограф, лазерный проектор, стерео WAV, Lissajous, Павел Волков, дела техники">
+    <meta name="author" content="Павел Волков">
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: system-ui, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            background: radial-gradient(circle at 10% 20%, #0b0f1c, #03050a);
+            margin: 0;
+            padding: 12px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 1.35rem;
+            margin: 0 0 2px 0;
+            color: white;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 8px;
+        }
+        .subhead {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            margin-bottom: 12px;
+            border-left: 2px solid #3b82f6;
+            padding-left: 8px;
+        }
+
+        .main-grid {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+        .card {
+            background: rgba(18, 22, 35, 0.96);
+            backdrop-filter: blur(12px);
+            border-radius: 1.6rem;
+            padding: 1rem;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        .canvas-card {
+            flex: 1.2;
+            min-width: 260px;
+        }
+        .controls-card {
+            flex: 1;
+            min-width: 240px;
+        }
+        .tab-bar {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            background: #111827cc;
+            border: 1px solid #374151;
+            border-radius: 2rem;
+            padding: 0.4rem 0.7rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #cbd5e6;
+            cursor: pointer;
+            transition: 0.1s ease;
+            flex: 1 0 auto;
+            text-align: center;
+        }
+        .tab-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        .shape-panel {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .shape-btn {
+            background: #111827;
+            border: 1px solid #374151;
+            border-radius: 2rem;
+            padding: 0.35rem 0.9rem;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #cbd5e6;
+            cursor: pointer;
+        }
+        .shape-btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+        canvas {
+            background: #010103;
+            border-radius: 1.2rem;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            display: block;
+            border: 1px solid #2d3748;
+            touch-action: none;
+            max-width: 100%;
+        }
+        .control-group {
+            margin-bottom: 0.7rem;
+        }
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            color: #cbd5e6;
+            font-size: 0.65rem;
+            margin-bottom: 0.2rem;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #2e3a55;
+            border-radius: 10px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        .exact-input {
+            width: 60px;
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            border-radius: 40px;
+            padding: 4px 6px;
+            color: white;
+            font-size: 0.65rem;
+            text-align: center;
+        }
+        .gen-btn {
+            background: linear-gradient(135deg, #10b981, #047857);
+            border: none;
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: white;
+            border-radius: 2rem;
+            cursor: pointer;
+            margin: 8px 0 6px;
+            transition: 0.1s;
+        }
+        .checkbox-group {
+            display: flex;
+            gap: 16px;
+            margin: 5px 0 6px;
+        }
+        .checkbox-group label {
+            color: #cbd5e6;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .text-input-area textarea {
+            width: 100%;
+            background: #0f111a;
+            border: 1px solid #3b82f6;
+            border-radius: 1.2rem;
+            padding: 8px 12px;
+            color: white;
+            font-family: monospace;
+            font-size: 0.75rem;
+            resize: vertical;
+        }
+        .text-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+        .small-btn {
+            background: #1f2a44;
+            border: none;
+            border-radius: 2rem;
+            padding: 5px 12px;
+            font-size: 0.65rem;
+            color: white;
+            cursor: pointer;
+            flex: 1;
+            text-align: center;
+        }
+        .small-btn.primary {
+            background: #3b82f6;
+        }
+        .style-options {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+            font-size: 0.65rem;
+            color: #9ca3af;
+            flex-wrap: wrap;
+        }
+        .style-options select {
+            background: #1a2335;
+            border: 1px solid #3b82f6;
+            border-radius: 2rem;
+            padding: 4px 10px;
+            color: white;
+            font-size: 0.7rem;
+        }
+        .player-section {
+            margin-top: 10px;
+            background: #0b0e17cc;
+            border-radius: 1.6rem;
+            padding: 10px;
+            backdrop-filter: blur(8px);
+            border: 1px solid #2d4a7c;
+        }
+        .big-play-btn {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            border: none;
+            width: 100%;
+            padding: 10px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: white;
+            border-radius: 3rem;
+            cursor: pointer;
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .download-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .small-outline {
+            background: #1f2a44;
+            border-radius: 2rem;
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            text-align: center;
+            color: white;
+            flex: 1;
+            cursor: pointer;
+            border: 1px solid #3b82f6;
+        }
+        .footer-note {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #b88f5b;
+            border-top: 1px solid #2d3748;
+            padding-top: 14px;
+        }
+        .footer-note a {
+            color: #6c9bcf;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .info {
+            font-size: 0.55rem;
+            text-align: center;
+            margin-top: 8px;
+            color: #6c7a93;
+        }
+        .separator {
+            height: 1px;
+            background: #2d3748;
+            margin: 8px 0;
+        }
+        .loading-indicator {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .gen-loading {
+            background: #065a46;
+            pointer-events: none;
+        }
+        @media (max-width: 680px) {
+            .canvas-card, .controls-card { flex: 1 1 100%; }
+            .tab-btn { padding: 0.35rem 0.5rem; font-size: 0.65rem; }
+            .control-label { font-size: 0.6rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎛️ XY Figure Generator <span style="font-size:0.7rem; background:#1f2a44; padding:2px 8px; border-radius:40px;">генератор фигур для осциллографа</span></h1>
+    <div class="subhead">🎧 Стерео WAV (X/Y) для лазерных проекторов • Фигуры • Лиссажу • 3D вращение • Текст в вектор</div>
+
+    <div class="main-grid">
+        <div class="card canvas-card">
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="standard">📐 Фигуры</button>
+                <button class="tab-btn" data-tab="text2vec">✏️ Текст</button>
+                <button class="tab-btn" data-tab="lissajous">🔄 Лиссажу</button>
+                <button class="tab-btn" data-tab="3d">🧊 3D</button>
+            </div>
+
+            <canvas id="mainCanvas" width="540" height="540" style="width:100%; height:auto; aspect-ratio:1/1;"></canvas>
+
+            <div id="standardShapes" class="shape-panel">
+                <button class="shape-btn" data-shape="circle">⚫ Круг</button>
+                <button class="shape-btn" data-shape="square">⬛ Квадрат</button>
+                <button class="shape-btn active" data-shape="triangle">🔺 Треугольник</button>
+                <button class="shape-btn" data-shape="star">⭐ Звезда</button>
+                <button class="shape-btn" data-shape="heart">❤️ Сердце</button>
+            </div>
+
+            <div id="text2vecControls" style="display:none;">
+                <div class="text-input-area">
+                    <textarea id="textInput" rows="2" placeholder="Введите текст...&#10;XY"></textarea>
+                    <div class="text-actions">
+                        <button id="generateTextBtn" class="small-btn primary">✨ Создать</button>
+                        <button id="clearTextBtn" class="small-btn">🗑️ Очистить</button>
+                        <button id="sampleTextBtn" class="small-btn">🎲 Пример</button>
+                    </div>
+                </div>
+                <div class="style-options">
+                    <span>🎨 Стиль:</span>
+                    <select id="textStyle"><option value="outline">Контур</option><option value="dots">Точечный</option></select>
+                    <span>📏 Масштаб:</span>
+                    <input type="range" id="textScale" min="0.4" max="1.2" step="0.02" value="0.85" style="width:90px;">
+                    <span id="scaleVal">0.85</span>
+                </div>
+            </div>
+
+            <div id="lissajousControls" style="display:none;">
+                <div class="control-group">
+                    <div class="control-label">📊 Частота X / Y</div>
+                    <select id="lissajousRatio">
+                        <option value="1,1">1:1 (окружность)</option><option value="2,1">2:1 (восьмёрка)</option>
+                        <option value="3,1">3:1</option><option value="3,2">3:2</option>
+                        <option value="4,3">4:3</option><option value="5,4">5:4</option>
+                    </select>
+                </div>
+                <div class="control-label">📐 Фаза</div>
+                <input type="range" id="lissajousPhase" min="0" max="360" step="5" value="90">
+            </div>
+
+            <div id="d3dControls" style="display:none;">
+                <div class="style-options">
+                    <span>🧊 Фигура:</span>
+                    <select id="d3dShape"><option value="cube">🧊 Куб</option><option value="pyramid">🔺 Пирамида</option></select>
+                    <span>🔄 Оборотов:</span>
+                    <input type="range" id="rotationCycles" min="1" max="10" step="0.5" value="3" style="width:90px;">
+                    <span id="cyclesVal">3</span>
+                </div>
+                <div class="info">🌀 3D вращение с интерполяцией рёбер</div>
+            </div>
+        </div>
+
+        <div class="card controls-card">
+            <div style="font-weight:600; margin-bottom:6px; font-size:0.85rem;">⚙️ Калибровка & фаза</div>
+            <div class="control-group">
+                <div class="control-label">🔄 Фаза <span id="phaseValue">0°</span></div>
+                <div style="display: flex; gap: 6px;">
+                    <input type="range" id="phaseSlider" min="0" max="360" step="1" value="0" style="flex:1">
+                    <input type="number" id="exactPhase" class="exact-input" step="1" min="0" max="360" value="0">
+                </div>
+            </div>
+            <div class="control-group"><div class="control-label">📊 Gain X <span id="gainXValue">1.00</span></div><input type="range" id="gainXSlider" min="0.5" max="1.5" step="0.01" value="1.00"></div>
+            <div class="control-group"><div class="control-label">📈 Gain Y <span id="gainYValue">1.00</span></div><input type="range" id="gainYSlider" min="0.5" max="1.5" step="0.01" value="1.00"></div>
+            <div class="control-group"><div class="control-label">🎯 Offset X <span id="offsetXValue">0.00</span></div><input type="range" id="offsetXSlider" min="-0.5" max="0.5" step="0.01" value="0"></div>
+            <div class="control-group"><div class="control-label">📍 Offset Y <span id="offsetYValue">0.00</span></div><input type="range" id="offsetYSlider" min="-0.5" max="0.5" step="0.01" value="0"></div>
+            <div class="checkbox-group"><label><input type="checkbox" id="invertX"> 🔄 Инверт X</label><label><input type="checkbox" id="invertY"> 🔄 Инверт Y</label></div>
+            <div class="control-group"><div class="control-label">⏱️ Длительность (сек) <span id="durationValue">10</span></div><input type="range" id="durationSlider" min="4" max="25" step="1" value="10"></div>
+            
+            <button id="generateBtn" class="gen-btn">🎵 СГЕНЕРИРОВАТЬ WAV</button>
+            
+            <div id="playerArea" style="display: none;">
+                <div class="player-section">
+                    <div class="control-label" style="margin-bottom: 4px;">🎧 Бесконечный цикл (Loop)</div>
+                    <button id="forcePlayBtn" class="big-play-btn">🔁 ВОСПРОИЗВЕСТИ (зациклено)</button>
+                    <audio id="liveAudioPlayer" controls preload="auto" loop style="width:100%; margin-top: 6px; border-radius: 40px;"></audio>
+                    <div class="download-row">
+                        <button id="downloadLastBtn" class="small-outline">📥 Скачать WAV</button>
+                        <button id="clearAudioBtn" class="small-outline">🗑️ Очистить</button>
+                    </div>
+                    <div class="player-note" style="font-size:0.55rem; color:#8ba0c0; margin-top:5px; text-align:center;">
+                        🔁 Loop-режим — трек повторяется бесконечно.
+                    </div>
+                </div>
+            </div>
+            <div class="footer-note">
+                📌 Павел Волков · 
+                <a href="https://volkovhl.github.io/" target="_blank">Проект на GitHub</a> · 
+                <a href="https://www.youtube.com/@Pavel_Volkov" target="_blank">Дела Техники</a>
+            </div>
+            <div class="info">🧪 Стерео сигнал (X = левый канал, Y = правый) для лазерного/осциллограф проектора</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        const SAMPLE_RATE = 44100;
+        let currentTab = "standard";
+        let currentShape = "triangle";
+        let current3DShape = "cube";
+        let phaseDeg = 0, gainX = 1, gainY = 1, offsetX = 0, offsetY = 0, invertX = false, invertY = false;
+        const amplitude = 0.88;
+        let durationSec = 10;
+        let rotationCycles = 3;
+        let currentTextPoints = [];
+        let animationAngle = 0;
+        let lissajousRatio = { fx: 1, fy: 1 };
+        let lissajousPhase = 90;
+        let lastGeneratedBlob = null, lastGeneratedUrl = null;
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- ПОСЛЕДОВАТЕЛЬНЫЙ ПЕРЕБОР ПРИМЕРОВ (V → Де → ла → Те → хни → ки) ---
+        const examplesSequence = ["V", "Де", "ла", "Те", "хни", "ки"];
+        let exampleIndex = 0;   // индекс текущего примера в последовательности
+        
+        // Функция для установки следующего примера по порядку
+        function setNextSequentialExample() {
+            const nextText = examplesSequence[exampleIndex];
+            const textarea = document.getElementById('textInput');
+            if (textarea) {
+                textarea.value = nextText;
+                // после установки текста обновляем графику
+                updateTextGraphics();
+            }
+            // увеличиваем индекс для следующего раза (циклически)
+            exampleIndex = (exampleIndex + 1) % examplesSequence.length;
+        }
+        
+        // === текст вектор ===
+        function textToVectorPoints(text, scaleFactor, style) {
+            if (!text || text.trim() === "") return [];
+            const tempCanvas = document.createElement('canvas');
+            const size = 512;
+            tempCanvas.width = tempCanvas.height = size;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.fillStyle = "#000"; tempCtx.fillRect(0,0,size,size);
+            let fontSize = Math.floor(size * 0.45);
+            tempCtx.font = `${fontSize}px "Segoe UI Emoji", "Segoe UI Symbol", "Arial", sans-serif`;
+            tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
+            tempCtx.fillStyle = "#ffffff";
+            tempCtx.fillText(text, size/2, size/2);
+            const imgData = tempCtx.getImageData(0,0,size,size);
+            const data = imgData.data;
+            let points = [];
+            for (let y = 1; y < size-1; y++) for (let x = 1; x < size-1; x++) {
+                const idx = (y*size + x)*4;
+                if (data[idx] > 128) {
+                    const left = ((y*size + (x-1))*4), right = ((y*size + (x+1))*4);
+                    const up = (((y-1)*size + x)*4), down = (((y+1)*size + x)*4);
+                    if (data[left] < 128 || data[right] < 128 || data[up] < 128 || data[down] < 128)
+                        points.push({ x: (x/size)*2-1, y: -((y/size)*2-1) });
+                }
+            }
+            if (points.length < 10) return [{x:0,y:0}];
+            let sorted = [points[0]];
+            const used = new Array(points.length).fill(false); used[0]=true;
+            const maxP = Math.min(points.length, 2500);
+            for (let i=1; i<maxP; i++) {
+                let last = sorted[sorted.length-1], bestIdx=-1, bestDist=Infinity;
+                for (let j=0; j<points.length; j++) if(!used[j]) { let d=Math.hypot(points[j].x-last.x, points[j].y-last.y); if(d<bestDist) { bestDist=d; bestIdx=j; } }
+                if(bestIdx!==-1) { sorted.push(points[bestIdx]); used[bestIdx]=true; } else break;
+            }
+            let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+            for(let p of sorted){ minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x); minY=Math.min(minY,p.y); maxY=Math.max(maxY,p.y); }
+            const rangeX = maxX-minX, rangeY = maxY-minY;
+            const scaleRange = Math.max(rangeX,rangeY)*0.95;
+            const finalScale = scaleFactor / scaleRange;
+            const centerX = (minX+maxX)/2, centerY = (minY+maxY)/2;
+            let result = sorted.map(p => ({ x: (p.x-centerX)*finalScale, y: (p.y-centerY)*finalScale }));
+            if(style === "dots") result = result.filter((_,i)=> i%Math.max(1,Math.floor(result.length/600)) === 0);
+            return result.map(p => ({ x: Math.max(-0.98,Math.min(0.98,p.x)), y: Math.max(-0.98,Math.min(0.98,p.y)) }));
+        }
+        
+        function updateTextGraphics() {
+            let rawText = document.getElementById('textInput').value;
+            if (!rawText.trim()) rawText = "XY";
+            const scale = parseFloat(document.getElementById('textScale').value);
+            const style = document.getElementById('textStyle').value;
+            currentTextPoints = textToVectorPoints(rawText, scale, style);
+            if(!currentTextPoints.length) currentTextPoints = [{x:0,y:0}];
+            drawPreview();
+        }
+        
+        // 3D
+        function rotateVertex(v, ax, ay, az) { let [x,y,z]=v; let y1=y*Math.cos(ax)-z*Math.sin(ax), z1=y*Math.sin(ax)+z*Math.cos(ax); let x2=x*Math.cos(ay)+z1*Math.sin(ay), z2=-x*Math.sin(ay)+z1*Math.cos(ay); let x3=x2*Math.cos(az)-y1*Math.sin(az), y3=x2*Math.sin(az)+y1*Math.cos(az); return [x3,y3,z2]; }
+        function project(v, d=2.5) { let [x,y,z]=v; let sc=0.9/(d+z); return [x*sc,y*sc]; }
+        const cubeVertices = [[-0.8,-0.8,-0.8],[0.8,-0.8,-0.8],[0.8,-0.8,0.8],[-0.8,-0.8,0.8],[-0.8,0.8,-0.8],[0.8,0.8,-0.8],[0.8,0.8,0.8],[-0.8,0.8,0.8]];
+        const cubeEdges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+        const pyramidVertices = [[0,0.9,0],[-0.8,-0.6,-0.8],[0.8,-0.6,-0.8],[0.8,-0.6,0.8],[-0.8,-0.6,0.8]];
+        const pyramidEdges = [[0,1],[0,2],[0,3],[0,4],[1,2],[2,3],[3,4],[4,1]];
+        function generate3DFigure(angle) {
+            let vertices, edges; if(current3DShape === 'cube') { vertices = cubeVertices.map(v=>[...v]); edges = cubeEdges; } else { vertices = pyramidVertices.map(v=>[...v]); edges = pyramidEdges; }
+            const ax=angle, ay=angle*0.7, az=angle*0.5;
+            const rotated = vertices.map(v=>rotateVertex(v,ax,ay,az));
+            const projected = rotated.map(v=>project(v,2.5));
+            let points = [];
+            const steps=48;
+            for(let e of edges){ let p1=projected[e[0]], p2=projected[e[1]]; for(let s=0;s<=steps;s++){ let t=s/steps; points.push({x:p1[0]*(1-t)+p2[0]*t, y:p1[1]*(1-t)+p2[1]*t}); } points.push({x:NaN,y:NaN}); }
+            return points;
+        }
+        function getStandardPoints(shape, cnt=1800){
+            let pts=[];
+            if(shape==='circle') for(let i=0;i<cnt;i++){ let t=(i/cnt)*Math.PI*2; pts.push({x:Math.cos(t),y:Math.sin(t)}); }
+            else if(shape==='square') for(let i=0;i<cnt;i++){ let t=(i/cnt)*2*Math.PI; let side=Math.floor((t/(Math.PI/2))%4), p=(t%(Math.PI/2))/(Math.PI/2); let x,y; if(side===0){ x=1; y=-1+p*2; } else if(side===1){ x=1-p*2; y=1; } else if(side===2){ x=-1; y=1-p*2; } else { x=-1+p*2; y=-1; } pts.push({x,y}); }
+            else if(shape==='triangle'){ let A={x:0.95,y:-0.7},B={x:0,y:0.95},C={x:-0.95,y:-0.7}; for(let i=0;i<cnt;i++){ let t=i/cnt; if(t<1/3){ let tt=t*3; pts.push({x:A.x*(1-tt)+B.x*tt, y:A.y*(1-tt)+B.y*tt}); } else if(t<2/3){ let tt=(t-1/3)*3; pts.push({x:B.x*(1-tt)+C.x*tt, y:B.y*(1-tt)+C.y*tt}); } else { let tt=(t-2/3)*3; pts.push({x:C.x*(1-tt)+A.x*tt, y:C.y*(1-tt)+A.y*tt}); } } }
+            else if(shape==='star') for(let i=0;i<cnt;i++){ let t=(i/cnt)*Math.PI*2; let r=(Math.sin(5*t)+1)/1.5; pts.push({x:Math.cos(t)*r,y:Math.sin(t)*r}); }
+            else if(shape==='heart') for(let i=0;i<cnt;i++){ let t=(i/cnt)*Math.PI*2; let x=0.7*16*Math.pow(Math.sin(t),3); let y=0.7*(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t)); pts.push({x:x/12,y:y/12}); }
+            return pts;
+        }
+        function getBasePoints(){
+            if(currentTab === "text2vec") return currentTextPoints.length ? currentTextPoints : [{x:0,y:0}];
+            if(currentTab === "lissajous"){ let pts=[]; for(let i=0;i<2000;i++){ let t=(i/2000)*Math.PI*2; let ph=lissajousPhase*Math.PI/180; pts.push({x:Math.sin(t*lissajousRatio.fx), y:Math.sin(t*lissajousRatio.fy+ph)}); } return pts; }
+            if(currentTab === "3d") return generate3DFigure(animationAngle);
+            return getStandardPoints(currentShape, 1800);
+        }
+        function applyCalibration(x,y,cosP,sinP){
+            let rotX = x*cosP - y*sinP, rotY = x*sinP + y*cosP;
+            if(invertX) rotX=-rotX; if(invertY) rotY=-rotY;
+            return { x: Math.max(-1,Math.min(1, rotX*gainX*amplitude+offsetX)), y: Math.max(-1,Math.min(1, rotY*gainY*amplitude+offsetY)) };
+        }
+        function drawPreview(){
+            ctx.fillStyle='#010103'; ctx.fillRect(0,0,canvas.width,canvas.height);
+            let raw = getBasePoints();
+            const cosP=Math.cos(phaseDeg*Math.PI/180), sinP=Math.sin(phaseDeg*Math.PI/180);
+            ctx.save(); ctx.translate(canvas.width/2,canvas.height/2); ctx.scale(1,-1);
+            const sc = Math.min(canvas.width,canvas.height)*0.44;
+            ctx.beginPath(); ctx.strokeStyle='#1f2a44'; ctx.lineWidth=0.8;
+            for(let i=-1;i<=1;i++){ ctx.moveTo(i*0.9*sc,-0.9*sc); ctx.lineTo(i*0.9*sc,0.9*sc); ctx.moveTo(-0.9*sc,i*0.9*sc); ctx.lineTo(0.9*sc,i*0.9*sc); } ctx.stroke();
+            ctx.beginPath(); let first=true;
+            for(let p of raw){
+                if(isNaN(p.x)||isNaN(p.y)){ ctx.stroke(); ctx.beginPath(); first=true; continue; }
+                let cal = applyCalibration(p.x,p.y,cosP,sinP);
+                let sx=cal.x*sc, sy=cal.y*sc;
+                if(first){ ctx.moveTo(sx,sy); first=false; } else ctx.lineTo(sx,sy);
+            }
+            ctx.strokeStyle='#3b82f6'; ctx.lineWidth=2.2; ctx.stroke();
+            ctx.restore();
+        }
+        async function generateWavBlob(){
+            return new Promise((resolve)=>{
+                setTimeout(()=>{
+                    let leftArr,rightArr;
+                    const totalSamples = SAMPLE_RATE * durationSec;
+                    if(currentTab === "3d"){
+                        let left=new Float32Array(totalSamples), right=new Float32Array(totalSamples);
+                        const ref=generate3DFigure(0).filter(p=>!isNaN(p.x));
+                        const ptsPer=ref.length;
+                        if(ptsPer===0) return resolve(null);
+                        const frames=Math.floor(totalSamples/ptsPer);
+                        const cosP=Math.cos(phaseDeg*Math.PI/180), sinP=Math.sin(phaseDeg*Math.PI/180);
+                        for(let f=0;f<frames;f++){
+                            let angle = (f/frames)*Math.PI*2*rotationCycles;
+                            let frameData=generate3DFigure(angle).filter(p=>!isNaN(p.x));
+                            for(let i=0;i<frameData.length && f*ptsPer+i<totalSamples;i++){
+                                let p=frameData[i];
+                                let rotX=p.x*cosP-p.y*sinP, rotY=p.x*sinP+p.y*cosP;
+                                if(invertX) rotX=-rotX; if(invertY) rotY=-rotY;
+                                let idx=f*ptsPer+i;
+                                left[idx]=Math.max(-1,Math.min(1,rotX*gainX*amplitude+offsetX));
+                                right[idx]=Math.max(-1,Math.min(1,rotY*gainY*amplitude+offsetY));
+                            }
+                        }
+                        leftArr=left; rightArr=right;
+                    } else {
+                        let left=new Float32Array(totalSamples), right=new Float32Array(totalSamples);
+                        let raw=getBasePoints().filter(p=>!isNaN(p.x));
+                        if(raw.length===0) raw=[{x:0,y:0}];
+                        const cosP=Math.cos(phaseDeg*Math.PI/180), sinP=Math.sin(phaseDeg*Math.PI/180);
+                        for(let i=0;i<totalSamples;i++){ let p=raw[i%raw.length]; let cal=applyCalibration(p.x,p.y,cosP,sinP); left[i]=cal.x; right[i]=cal.y; }
+                        leftArr=left; rightArr=right;
+                    }
+                    function createWav(l,r){ let num=l.length,buf=new ArrayBuffer(44+num*4),v=new DataView(buf); const w=(o,s)=>[...s].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0))); w(0,'RIFF'); v.setUint32(4,36+num*4,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,2,true); v.setUint32(24,SAMPLE_RATE,true); v.setUint32(28,SAMPLE_RATE*4,true); v.setUint16(32,4,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,num*4,true); let off=44; for(let i=0;i<num;i++){ v.setInt16(off,Math.max(-32768,Math.min(32767,l[i]*0x7FFF)),true); v.setInt16(off+2,Math.max(-32768,Math.min(32767,r[i]*0x7FFF)),true); off+=4; } return new Blob([buf],{type:'audio/wav'}); }
+                    resolve(createWav(leftArr,rightArr));
+                },10);
+            });
+        }
+        function updateUIvalues(){
+            document.getElementById('phaseValue').innerText=phaseDeg+"°";
+            document.getElementById('gainXValue').innerText=gainX.toFixed(2);
+            document.getElementById('gainYValue').innerText=gainY.toFixed(2);
+            document.getElementById('offsetXValue').innerText=offsetX.toFixed(2);
+            document.getElementById('offsetYValue').innerText=offsetY.toFixed(2);
+            document.getElementById('durationValue').innerText=durationSec;
+        }
+        function setTab(tab){
+            currentTab=tab;
+            document.querySelectorAll('.tab-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===tab));
+            document.getElementById('standardShapes').style.display=tab==='standard'?'flex':'none';
+            document.getElementById('text2vecControls').style.display=tab==='text2vec'?'block':'none';
+            document.getElementById('lissajousControls').style.display=tab==='lissajous'?'block':'none';
+            document.getElementById('d3dControls').style.display=tab==='3d'?'block':'none';
+            drawPreview();
+        }
+        async function onGenerate(){
+            const btn=document.getElementById('generateBtn'), orig=btn.innerText;
+            btn.innerHTML='⏳ Генерация...<span class="loading-indicator"></span>'; btn.classList.add('gen-loading');
+            try{
+                const blob=await generateWavBlob(); if(!blob) throw new Error("Ошибка");
+                if(lastGeneratedUrl) URL.revokeObjectURL(lastGeneratedUrl);
+                lastGeneratedBlob=blob; lastGeneratedUrl=URL.createObjectURL(blob);
+                const audio=document.getElementById('liveAudioPlayer'); audio.src=lastGeneratedUrl; audio.load(); audio.loop=true;
+                document.getElementById('playerArea').style.display='block';
+                document.getElementById('downloadLastBtn').onclick=()=>{ if(lastGeneratedBlob){ let a=document.createElement('a'); a.href=URL.createObjectURL(lastGeneratedBlob); a.download=`XY_Figure_${currentTab}_${Date.now()}.wav`; a.click(); URL.revokeObjectURL(a.href); } };
+                document.getElementById('forcePlayBtn').onclick=()=>{ audio.loop=true; audio.play().catch(e=>console.warn(e)); };
+            }catch(e){ alert("Ошибка: "+e.message); } finally{ btn.innerHTML=orig; btn.classList.remove('gen-loading'); }
+        }
+        // обработчики
+        document.getElementById('phaseSlider').oninput=(e)=>{ phaseDeg=+e.target.value; document.getElementById('exactPhase').value=phaseDeg; updateUIvalues(); drawPreview(); };
+        document.getElementById('exactPhase').oninput=(e)=>{ let v=+e.target.value; if(!isNaN(v)){ phaseDeg=Math.min(360,Math.max(0,v)); document.getElementById('phaseSlider').value=phaseDeg; updateUIvalues(); drawPreview(); } };
+        document.getElementById('gainXSlider').oninput=(e)=>{ gainX=+e.target.value; updateUIvalues(); drawPreview(); };
+        document.getElementById('gainYSlider').oninput=(e)=>{ gainY=+e.target.value; updateUIvalues(); drawPreview(); };
+        document.getElementById('offsetXSlider').oninput=(e)=>{ offsetX=+e.target.value; updateUIvalues(); drawPreview(); };
+        document.getElementById('offsetYSlider').oninput=(e)=>{ offsetY=+e.target.value; updateUIvalues(); drawPreview(); };
+        document.getElementById('durationSlider').oninput=(e)=>{ durationSec=parseInt(e.target.value); updateUIvalues(); drawPreview(); };
+        document.getElementById('invertX').onchange=(e)=> { invertX=e.target.checked; drawPreview(); };
+        document.getElementById('invertY').onchange=(e)=> { invertY=e.target.checked; drawPreview(); };
+        document.getElementById('lissajousRatio').onchange=(e)=>{ let [fx,fy]=e.target.value.split(',').map(Number); lissajousRatio={fx,fy}; drawPreview(); };
+        document.getElementById('lissajousPhase').oninput=(e)=>{ lissajousPhase=parseInt(e.target.value); drawPreview(); };
+        document.getElementById('d3dShape').onchange=(e)=>{ current3DShape=e.target.value; drawPreview(); };
+        document.getElementById('rotationCycles').oninput=(e)=>{ rotationCycles=parseFloat(e.target.value); document.getElementById('cyclesVal').innerText=rotationCycles; drawPreview(); };
+        document.getElementById('textScale').oninput=(e)=>{ document.getElementById('scaleVal').innerText=e.target.value; updateTextGraphics(); };
+        document.getElementById('textStyle').onchange=()=>updateTextGraphics();
+        document.getElementById('generateTextBtn').onclick=()=>updateTextGraphics();
+        document.getElementById('clearTextBtn').onclick=()=>{ document.getElementById('textInput').value=""; updateTextGraphics(); };
+        document.getElementById('sampleTextBtn').onclick=()=>{ setNextSequentialExample(); };
+        
+        document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+        document.querySelectorAll('.shape-btn').forEach(b=>b.addEventListener('click',()=>{ currentShape=b.dataset.shape; document.querySelectorAll('.shape-btn').forEach(s=>s.classList.remove('active')); b.classList.add('active'); drawPreview(); }));
+        document.getElementById('generateBtn').addEventListener('click', onGenerate);
+        document.getElementById('clearAudioBtn').addEventListener('click',()=>{ let a=document.getElementById('liveAudioPlayer'); a.pause(); a.src=""; document.getElementById('playerArea').style.display='none'; if(lastGeneratedUrl) URL.revokeObjectURL(lastGeneratedUrl); lastGeneratedBlob=null; lastGeneratedUrl=null; });
+        
+        document.getElementById('textInput').value = "XY";
+        updateTextGraphics(); 
+        setTab('standard'); 
+        updateUIvalues(); 
+        drawPreview();
+        
+        setInterval(()=>{ if(currentTab==='3d'){ animationAngle=(animationAngle+0.022)%(Math.PI*2); drawPreview(); } }, 35);
+    })();
+</script>
+</body>
+</html>
